@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+}
+
+@layer base {
+  body {
+    @apply bg-black text-white antialiased overflow-x-hidden;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-3xl transition-all duration-500;
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #ffffff 0%, #6366f1 100%);
+    @apply bg-clip-text text-transparent;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
+}
+
+/* Base resets to ensure NO WHITE backgrounds */
+* {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+html,
+body {
+  background-color: black !important;
+}
