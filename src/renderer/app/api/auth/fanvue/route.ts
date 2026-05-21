@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { generateCodeVerifier, generateCodeChallenge, generateState } from '@/lib/fanvue/oauth-utils';
 import { cookies } from 'next/headers';
+import { FanvueAuth } from '@/core/api/fanvue/auth.js';
 
 const DEFAULT_REDIRECT_URI = 'https://localhost:3001/api/auth/fanvue/callback';
-const FANVUE_AUTH_URL = 'https://auth.fanvue.com/oauth2/auth';
-const FANVUE_SCOPES = 'read:self read:chat read:media read:post write:chat write:media write:post';
-
 export async function GET(request: NextRequest) {
     const config = await prisma.appConfig.findUnique({ where: { id: 'global' } });
 
@@ -30,9 +27,13 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const state = generateState();
-    const verifier = generateCodeVerifier();
-    const challenge = generateCodeChallenge(verifier);
+    const redirectUri = config.fanvueRedirectUri || process.env.OAUTH_REDIRECT_URI || DEFAULT_REDIRECT_URI;
+    const auth = new FanvueAuth({
+        clientId: config.fanvueClientId,
+        clientSecret: config.fanvueClientSecret || "",
+        redirectUri,
+    });
+    const { state, codeVerifier: verifier, codeChallenge: challenge } = auth.generatePKCE();
 
     // Store verifier and state in secure cookies for the callback
     const cookieStore = await cookies();
@@ -40,16 +41,6 @@ export async function GET(request: NextRequest) {
     cookieStore.set('fanvue_oauth_state', state, { httpOnly: true, secure: secureCookie, sameSite: 'lax', path: '/', maxAge: 600 });
     cookieStore.set('fanvue_oauth_verifier', verifier, { httpOnly: true, secure: secureCookie, sameSite: 'lax', path: '/', maxAge: 600 });
 
-    const redirectUri = config.fanvueRedirectUri || process.env.OAUTH_REDIRECT_URI || DEFAULT_REDIRECT_URI;
-
-    const authUrl = new URL(FANVUE_AUTH_URL);
-    authUrl.searchParams.append('client_id', config.fanvueClientId);
-    authUrl.searchParams.append('redirect_uri', redirectUri);
-    authUrl.searchParams.append('response_type', 'code');
-    authUrl.searchParams.append('scope', process.env.FANVUE_OAUTH_SCOPES || FANVUE_SCOPES);
-    authUrl.searchParams.append('state', state);
-    authUrl.searchParams.append('code_challenge', challenge);
-    authUrl.searchParams.append('code_challenge_method', 'S256');
-
-    return NextResponse.redirect(authUrl.toString());
+    const authUrl = auth.getAuthorizationUrl(challenge, state);
+    return NextResponse.redirect(authUrl);
 }

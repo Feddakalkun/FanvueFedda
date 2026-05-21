@@ -7,6 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node tests/core.autoposter.test.js",
+    "install:windows": "install.bat",
+    "run:windows": "run.bat",
+    "update:windows": "update.bat",
+    "sync:test": "powershell -ExecutionPolicy Bypass -File ./scripts/sync_to_test_installer.ps1",
     "legacy:scan": "powershell -ExecutionPolicy Bypass -File ./scripts/scan_legacy.ps1",
     "db:push": "prisma generate && prisma db push",
     "postinstall": "prisma generate"

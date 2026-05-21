@@ -9,6 +9,10 @@ This workspace is initialized with:
 - Recovered setup scripts from `H:\Fanvue_Ultimate_Recovered\scripts`
 - New architecture folders for Electron/main process, core APIs, AI, scheduling, and media pipelines
 
+## Collaboration Rule
+
+- Every fix/change must be logged in `H:\Fanvue_use_this\MEMORY_LOG.md` immediately after the change.
+
 ## Quick Start
 
 ```powershell

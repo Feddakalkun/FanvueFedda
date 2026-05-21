@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import axios from 'axios';
 import { cookies } from 'next/headers';
+import { FanvueAuth } from '@/core/api/fanvue/auth.js';
+import { TokenStore } from '@/core/api/fanvue/tokenStore.js';
 
 const DEFAULT_REDIRECT_URI = 'https://localhost:3001/api/auth/fanvue/callback';
-const FANVUE_TOKEN_URL = 'https://auth.fanvue.com/oauth2/token';
 const FANVUE_API_URL = 'https://api.fanvue.com';
 
 type FanvueProfile = {
@@ -54,26 +55,16 @@ export async function GET(request: NextRequest) {
 
     try {
         const redirectUri = config.fanvueRedirectUri || process.env.OAUTH_REDIRECT_URI || DEFAULT_REDIRECT_URI;
-        const credentials = Buffer.from(`${config.fanvueClientId}:${config.fanvueClientSecret}`).toString('base64');
+        const tokenStore = new TokenStore();
+        const auth = new FanvueAuth({
+            tokenStore,
+            clientId: config.fanvueClientId,
+            clientSecret: config.fanvueClientSecret,
+            redirectUri,
+        });
 
-        const tokenRes = await axios.post(
-            FANVUE_TOKEN_URL,
-            new URLSearchParams({
-                grant_type: 'authorization_code',
-                code,
-                redirect_uri: redirectUri,
-                code_verifier: verifier,
-            }).toString(),
-            {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': `Basic ${credentials}`,
-                    'Accept': 'application/json',
-                },
-            }
-        );
-
-        const { access_token, refresh_token, expires_in } = tokenRes.data;
+        const tokenData = await auth.exchangeCodeForTokens(code, verifier);
+        const { access_token, refresh_token, expires_in } = tokenData;
 
         // Get user profile to identify who connected
         const profileRes = await axios.get(`${FANVUE_API_URL}/users/me`, {
@@ -112,6 +103,13 @@ export async function GET(request: NextRequest) {
                 fanvueUserId,
                 fanvueConnected: true,
             }
+        });
+
+        await tokenStore.save(slug, {
+            ...tokenData,
+            access_token,
+            refresh_token,
+            expires_at: new Date(Date.now() + ((expires_in || 3600) * 1000)).toISOString(),
         });
 
         cookieStore.set('fanvue_access_token', access_token, {
